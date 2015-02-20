@@ -1,3 +1,4 @@
-# Network
-Samples A Network
-This is a preliminary attempt to compute edge significance in a network
+# Network Comparisons
+(a)Computes permutation p-value for edges within a network.
+(b)Uses permutation test to make global comparison between two networks.
+
