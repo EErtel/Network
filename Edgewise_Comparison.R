@@ -1,9 +1,12 @@
-#### Created 30 January 2015 by Ethan Ertel ####
-#### Revised 23 February 2015 by Ethan Ertel ####
-rm(list=ls())
+#### Revised 25 February 2015 by Ethan Ertel ####
 
 network_vector <- c("~/Documents/Corrada/cases.tsv","~/Documents/Corrada/controls.tsv")
-#network_vector <- for(thing in commandArgs(trailingOnly = TRUE)){}
+label_vector <- c("cases","controls")
+perms <- 10
+#inputs <- commandArgs(trailingOnly = TRUE)
+#network_vector <- c(inputs[1],inputs[2]
+#label_vector <- c(inputs[3],inputs[4]
+#perms <- as.integer(inputs[5])
 
 ###########################################################################################
 ### parses adjacency list, outputs n*n matrix (n*1 OTU names, n*(n-1) edges)
@@ -53,20 +56,20 @@ edgesByOTU <- function(edgeList){
 #### This script takes as inputs two network file locations (weighted adjacency lists of coexpressed OTUs) and a label vector (phenotypic state for each network);
 #### optional inputs are (or, may be) 
 #### the function and outputs a list of edge significance (by pt)
+
 edgeSignificance <- function(network_vector, labels, permutations = 10){
   if(length(network_vector) != 2){stop("Input vector must contain two networks")}
   if(length(labels) != 2){stop("Label vector must contain two labels")}
   len <- length(network_vector)
   networks <- list()
   ### Reads network files to generate matrix of edges for each OTU
-  for(i in 1:len){ 
-    networks[[i]] <- edgesByOTU(read.table(file=network_vector[i], sep="\t", header=TRUE))
-  }
-  #if(sum(apply(X=cbind(a[[1]][,1],a[[2]][,1]),MARGIN=1,FUN=function(i){i[[1]]!=i[[2]]}))!=0){stop("Networks must consist of same OTUs")} ### Compares OTU names to confirm networks are comparable
-  n <- length(a[[1]][,1])
+  for(i in 1:len){networks[[i]] <- edgesByOTU(read.table(file=network_vector[i], sep="\t", header=TRUE))}
+  #if(sum(apply(X=cbind(networks[[1]][,1],networks[[2]][,1]),MARGIN=1,FUN=function(i){i[[1]]!=i[[2]]}))!=0){stop("Networks must consist of same OTUs")} ### Compares OTU names to confirm networks are comparable
+  n <- 100#length(networks[[1]][,1])
   pval_results <- matrix(ncol = 2,nrow=n*(n-1)/2) #matrix(nrow=n,ncol=2)
   permutationPvalues <- rep(0,permutations)
   count = 0
+  OTUs <- networks[[1]][,1]
   for(i in 1:(n-1)){
     for(j in (i+1):n){
       dist1 <- c(networks[[1]][i,2:n],networks[[1]][j,2:n]) #Pooled edges for OTUs i,j; network 1
@@ -79,13 +82,53 @@ edgeSignificance <- function(network_vector, labels, permutations = 10){
         dist1 <- pool[samps[1:(2*(n-1))]]
         dist2 <- pool[samps[(2*(n-1)+1):(4*(n-1))]]
         permutationPvalues[t]<-t.test(dist1,dist2, alternative = "two.sided")[[3]]
-        ### t.test scales (about) linearly?
+        ### t.test computation scales (about) linearly?
+        ### p.adjust(p, method = p.adjust.methods, n = length(p))
       }
+      permutationPvalues <- p.adjust(permutationPvalues, method = "holm")
       count = count + 1
-      pval_results[count,1] <- paste(as.character(i),as.character(j),sep='-')
+      pval_results[count,1] <- paste(as.character(networks[[1]][i,1]),as.character(networks[[1]][j,1]),sep='-')
       pval_results[count,2] <- as.numeric(sum(permutationPvalues<=pvalue1))/permutations
-      ### This is a raw value; Holm's step-wise method may be more appropriate
+      ### P-values are adjusted by Holm's step-wise method may be more appropriate (p.adjust)
     }
   }
   return(pval_results)
 }
+
+OTUsignificance <- function(network_vector, labels, permutations = 1000){
+  if(length(network_vector) != 2){stop("Input vector must contain two networks")}
+  if(length(labels) != 2){stop("Label vector must contain two labels")}
+  len <- length(network_vector)
+  networks <- list()
+  ### Reads network files to generate matrix of edges for each OTU
+  for(i in 1:len){networks[[i]] <- edgesByOTU(read.table(file=network_vector[i], sep="\t", header=TRUE))}
+  #if(sum(apply(X=cbind(networks[[1]][,1],networks[[2]][,1]),MARGIN=1,FUN=function(i){i[[1]]!=i[[2]]}))!=0){stop("Networks must consist of same OTUs")} ### Compares OTU names to confirm networks are comparable
+  n <- length(networks[[1]][,1])
+  pval_results <- matrix(ncol = 2,nrow=n) #matrix(nrow=n,ncol=2)
+  permutationPvalues <- rep(0,permutations)
+  count = 0
+  OTUs <- networks[[1]][,1]
+  for(i in 1:n){
+      dist1 <- c(networks[[1]][i,2:n]) #Edges for OTU i; network 1
+      dist2 <- c(networks[[2]][i,2:n]) #Edges for OTU i; network 2
+      pvalue1 <- t.test(dist1,dist2, alternative = "two.sided")[[3]]
+      pool <- c(dist1,dist2)  ### pool of all edges
+      for(t in 1:permutations){
+        samps <- sample(1:(2*(n-1)), (2*(n-1)), replace = FALSE, prob = NULL)
+        dist1 <- pool[samps[1:(n-1)]]
+        dist2 <- pool[samps[((n-1)+1):(2*(n-1))]]
+        permutationPvalues[t]<-t.test(dist1,dist2, alternative = "two.sided")[[3]]
+        ### t.test computation scales (about) linearly? But, still slow
+        ### is difference in means sufficient? or, meaningful?
+        ### p.adjust(p, method = p.adjust.methods, n = length(p))
+      }
+      permutationPvalues <- p.adjust(permutationPvalues, method = "holm")
+      count = count + 1
+      pval_results[count,1] <- as.character(networks[[1]][i,1])
+      pval_results[count,2] <- as.numeric(sum(permutationPvalues<=pvalue1))/permutations
+      ### P-values are adjusted by Holm's step-wise method may be more appropriate (p.adjust)
+    }
+  }
+  return(pval_results)
+}
+edgeSignificance(network_vector, label_vector,permutations = perms)
