@@ -36,3 +36,4 @@ EdgewiseDifferenceGP <- function(network_vector, labels, permutations = 100){
   perm_results <- colMeans(abs(edgeDifferences[2:(permutations+1),])<abs(edgeDifferences[1,]))
   return(data.frame(Edge_Labels=edgeLabels,permutationStatistics=perm_results))
 }
+EdgewiseDifferenceGP(network_vector,label_vector,permutations)
