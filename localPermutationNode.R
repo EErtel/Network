@@ -51,7 +51,7 @@ edgesByOTU <- function(edgeList){  ### parses adjacency list, outputs n*n matrix
 
 ###########################################################################################
 
-edgePermutationOTU <- function(network_vector, labels, permutations = 1000){
+localPermutationNode <- function(network_vector, labels, permutations = 1000){
   if(length(network_vector) != 2){stop("Input vector must contain two networks")}
   if(length(labels) != 2){stop("Label vector must contain two labels")}
   len <- length(network_vector)
@@ -80,4 +80,4 @@ edgePermutationOTU <- function(network_vector, labels, permutations = 1000){
   }
   return(list(data.frame(OTU.labels,permutation_results),labels))
 }
-edgePermutationOTU(network_vector = network_vector,labels=label_vector,permutations)
+localPermutationNode(network_vector = network_vector,labels=label_vector,permutations)
